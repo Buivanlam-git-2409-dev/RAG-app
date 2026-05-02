@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(venv\\\\Scripts\\\\python.exe -m uvicorn main:app --reload --host localhost --port 8001)",
+      "Bash(timeout *)",
+      "Bash(./venv/Scripts/python.exe -m uvicorn main:app --reload --host localhost --port 8001)"
+    ]
+  }
+}

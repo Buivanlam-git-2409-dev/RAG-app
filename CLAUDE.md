@@ -43,7 +43,7 @@ ruff check . --fix              # Auto-fix issues
 - Không commit file `.env` hoặc API keys
 
 ## Current State
-- **Last session:** 2026-05-01 — Completed backend foundation setup
+- **Last session:** 2026-05-02 — Testing and API validation
 - **Completed:**
   - Created project structure (backend, data directories)
   - Implemented FastAPI application with CORS support
@@ -53,8 +53,10 @@ ruff check . --fix              # Auto-fix issues
   - Added document management endpoints (list, delete, clear)
   - Created configuration management with environment variables
   - Added comprehensive error handling and validation
-- **In progress:** Testing and validation
-- **Next:** Setup virtual environment, install dependencies, test API endpoints
+  - Setup virtual environment and installed dependencies
+  - **All 8 unit tests passing** ✅
+- **In progress:** Fixing encoding issue in main.py (removed emojis for Windows compatibility)
+- **Next:** Start server and test API endpoints manually
 
 ## Key Decisions
 - Sử dụng ChromaDB local vì dễ setup và không cần external service

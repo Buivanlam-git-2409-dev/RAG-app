@@ -3,20 +3,24 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from .api import upload, query
-from .core.config import settings
+try:
+    from .api import upload, query
+    from .core.config import settings
+except ImportError:  # Fallback when running as a script
+    from api import upload, query
+    from core.config import settings
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifespan."""
     # Startup
-    print("🚀 Starting RAG App...")
-    print(f"📁 ChromaDB persist directory: {settings.chroma_persist_directory}")
-    print(f"🤖 Using OpenAI model: {settings.openai_model}")
+    print("Starting RAG App...")
+    print(f"ChromaDB persist directory: {settings.chroma_persist_directory}")
+    print(f"Using OpenAI model: {settings.openai_model}")
     yield
     # Shutdown
-    print("👋 Shutting down RAG App...")
+    print("Shutting down RAG App...")
 
 
 # Create FastAPI app

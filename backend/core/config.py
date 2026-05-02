@@ -6,9 +6,10 @@ from typing import Optional
 class Settings(BaseSettings):
     """Application settings."""
 
-    # OpenAI Configuration
-    openai_api_key: str
-    openai_model: str = "gpt-4o-mini"
+    # Google Gemini Configuration
+    google_api_key: str
+    gemini_model: str = "gemini-1.5-flash"
+    gemini_embedding_model: str = "models/embedding-001"
 
     # ChromaDB Configuration
     chroma_persist_directory: str = "./data/chroma"

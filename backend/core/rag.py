@@ -17,8 +17,9 @@ class RAGService:
 
     def __init__(self):
         """Initialize RAG service with embeddings and vector store."""
-        self.embeddings = OpenAIEmbeddings(
-            openai_api_key=settings.openai_api_key
+        self.embeddings = GoogleGenerativeAIEmbeddings(
+            google_api_key=settings.google_api_key,
+            model=settings.gemini_embedding_model
         )
         self.vector_store = None
         self.qa_chain = None
@@ -92,9 +93,9 @@ class RAGService:
         retriever = self.vector_store.as_retriever(search_kwargs={"k": k})
 
         # Create LLM
-        llm = ChatOpenAI(
-            model=settings.openai_model,
-            openai_api_key=settings.openai_api_key,
+        llm = ChatGoogleGenerativeAI(
+            model=settings.gemini_model,
+            google_api_key=settings.google_api_key,
             temperature=0
         )
 
