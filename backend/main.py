@@ -1,4 +1,6 @@
 """Main FastAPI application for RAG App."""
+import sys
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -7,9 +9,10 @@ try:
     from .api import upload, query
     from .core.config import settings
 except ImportError:  # Fallback when running as a script
+    # Add current directory to sys.path for absolute imports
+    sys.path.insert(0, str(Path(__file__).parent))
     from api import upload, query
     from core.config import settings
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -17,7 +20,7 @@ async def lifespan(app: FastAPI):
     # Startup
     print("Starting RAG App...")
     print(f"ChromaDB persist directory: {settings.chroma_persist_directory}")
-    print(f"Using OpenAI model: {settings.openai_model}")
+    print(f"Using Google Gemini model: {settings.gemini_model}")
     yield
     # Shutdown
     print("Shutting down RAG App...")

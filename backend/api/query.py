@@ -2,7 +2,10 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from ..core.rag import rag_service
+try:
+    from ..core.rag import rag_service
+except ImportError:
+    from core.rag import rag_service
 
 router = APIRouter()
 

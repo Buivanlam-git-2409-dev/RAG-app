@@ -5,8 +5,12 @@ import os
 from pathlib import Path
 import shutil
 
-from ..core.rag import rag_service
-from ..core.config import settings
+try:
+    from ..core.rag import rag_service
+    from ..core.config import settings
+except ImportError:
+    from core.rag import rag_service
+    from core.config import settings
 
 router = APIRouter()
 

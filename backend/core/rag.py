@@ -1,13 +1,14 @@
 """RAG (Retrieval-Augmented Generation) implementation."""
-from langchain_community.vectorstores import Chroma
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
-from langchain_core.runnables import RunnablePassthrough
-from langchain_core.output_parsers import StrOutputParser
+from langchain_huggingface import HuggingFaceEmbeddings
 from typing import List, Optional
 import os
 from pathlib import Path
+import chromadb
+import uuid
 
 from .config import settings
 
@@ -17,33 +18,26 @@ class RAGService:
 
     def __init__(self):
         """Initialize RAG service with embeddings and vector store."""
-        self.embeddings = GoogleGenerativeAIEmbeddings(
-            google_api_key=settings.google_api_key,
-            model=settings.gemini_embedding_model
+        # Dùng HuggingFace embeddings (free, local, không cần API key)
+        self.embeddings = HuggingFaceEmbeddings(
+            model_name="sentence-transformers/all-MiniLM-L6-v2"
         )
-        self.vector_store = None
+        
+        # ✅ Dùng ChromaDB client với cấu hình mới
+        from pathlib import Path
+        persist_dir = Path(settings.chroma_persist_directory)
+        persist_dir.mkdir(parents=True, exist_ok=True)
+        
+        self.chroma_client = chromadb.PersistentClient(
+            path=str(persist_dir)
+        )
+        
+        # Tạo hoặc lấy collection
+        self.collection = self.chroma_client.get_or_create_collection(
+            name="rag_documents"
+        )
+        
         self.qa_chain = None
-        self._initialize_vector_store()
-
-    def _initialize_vector_store(self):
-        """Initialize or load existing vector store."""
-        persist_dir = settings.chroma_persist_directory
-
-        # Create directory if it doesn't exist
-        Path(persist_dir).mkdir(parents=True, exist_ok=True)
-
-        # Try to load existing vector store
-        if os.path.exists(persist_dir) and os.listdir(persist_dir):
-            self.vector_store = Chroma(
-                persist_directory=persist_dir,
-                embedding_function=self.embeddings
-            )
-        else:
-            # Create new vector store
-            self.vector_store = Chroma(
-                persist_directory=persist_dir,
-                embedding_function=self.embeddings
-            )
 
     def add_documents(self, documents: List[Document]) -> int:
         """
@@ -66,10 +60,28 @@ class RAGService:
         )
 
         splits = text_splitter.split_documents(documents)
-
-        # Add to vector store
-        self.vector_store.add_documents(splits)
-
+        
+        # Chuyển đổi sang format cho ChromaDB
+        ids = [str(uuid.uuid4()) for _ in splits]
+        texts = [split.page_content for split in splits]
+        metadatas = [split.metadata for split in splits]
+        
+        # Tạo embeddings
+        print(f"Đang tạo embeddings cho {len(splits)} chunks...")
+        embeddings = []
+        for text in texts:
+            emb = self.embeddings.embed_query(text)
+            embeddings.append(emb)
+        
+        # Thêm vào collection
+        self.collection.add(
+            ids=ids,
+            documents=texts,
+            metadatas=metadatas,
+            embeddings=embeddings
+        )
+        
+        print(f"✅ Đã thêm {len(splits)} chunks vào database")
         return len(splits)
 
     def query(self, question: str, k: int = 4) -> dict:
@@ -83,14 +95,54 @@ class RAGService:
         Returns:
             Dictionary with answer and sources
         """
-        if not self.vector_store:
+        # Kiểm tra xem có dữ liệu không
+        try:
+            collection_count = self.collection.count()
+            if collection_count == 0:
+                return {
+                    "answer": "Không có tài liệu nào trong vector store để truy vấn",
+                    "sources": []
+                }
+        except:
             return {
-                "answer": "Không có tài liệu nào trong vector store để truy vấn",
+                "answer": "Chưa có tài liệu nào được upload. Hãy upload file trước.",
                 "sources": []
             }
 
-        # Create retriever
-        retriever = self.vector_store.as_retriever(search_kwargs={"k": k})
+        # Tạo embedding cho câu hỏi
+        question_embedding = self.embeddings.embed_query(question)
+        
+        # Tìm kiếm
+        results = self.collection.query(
+            query_embeddings=[question_embedding],
+            n_results=k
+        )
+        
+        if not results['documents'] or len(results['documents'][0]) == 0:
+            return {
+                "answer": "Không tìm thấy thông tin liên quan trong tài liệu.",
+                "sources": []
+            }
+        
+        # Lấy kết quả
+        contexts = results['documents'][0]
+        sources = []
+        for i, meta in enumerate(results['metadatas'][0]):
+            sources.append({
+                "content": contexts[i][:200] + "..." if len(contexts[i]) > 200 else contexts[i],
+                "metadata": meta
+            })
+        
+        # Tạo prompt
+        context_text = "\n\n".join(contexts)
+        
+        prompt = f"""Answer the question based only on the following context:
+
+{context_text}
+
+Question: {question}
+
+Answer the question in Vietnamese. If you don't know the answer based on the context, say "Tôi không tìm thấy thông tin này trong tài liệu." """
 
         # Create LLM
         llm = ChatGoogleGenerativeAI(
@@ -98,57 +150,22 @@ class RAGService:
             google_api_key=settings.google_api_key,
             temperature=0
         )
-
-        # Create prompt template
-        from langchain_core.prompts import ChatPromptTemplate
-
-        template = """Answer the question based only on the following context:
-
-{context}
-
-Question: {question}
-
-Answer the question in Vietnamese. If you don't know the answer based on the context, say "Tôi không tìm thấy thông tin này trong tài liệu." """
-
-        prompt = ChatPromptTemplate.from_template(template)
-
-        # Create RAG chain using LCEL
-        def format_docs(docs):
-            return "\n\n".join(doc.page_content for doc in docs)
-
-        rag_chain = (
-            {
-                "context": retriever | format_docs,
-                "question": RunnablePassthrough()
-            }
-            | prompt
-            | llm
-            | StrOutputParser()
-        )
-
-        # Query and get sources
-        retrieved_docs = retriever.invoke(question)
-        answer = rag_chain.invoke(question)
-
-        # Extract sources
-        sources = []
-        for doc in retrieved_docs:
-            sources.append({
-                "content": doc.page_content[:200] + "...",
-                "metadata": doc.metadata
-            })
+        
+        # Gọi LLM trực tiếp
+        response = llm.invoke(prompt)
 
         return {
-            "answer": answer,
+            "answer": response.content,
             "sources": sources
         }
 
     def clear_store(self):
         """Clear all documents from the vector store."""
-        if self.vector_store:
-            # Delete all documents
-            self.vector_store.delete_collection()
-            self._initialize_vector_store()
+        try:
+            self.chroma_client.delete_collection("rag_documents")
+        except:
+            pass
+        self.collection = self.chroma_client.create_collection("rag_documents")
 
 
 # Global RAG service instance
