@@ -1,0 +1,4 @@
+Đây là tài liệu test cho RAG App.
+Ứng dụng RAG cho phép upload PDF và TXT.
+ChromaDB lưu trữ vector embeddings.
+Google Gemini API được dùng để trích xuất thông tin.

@@ -1,0 +1,1 @@
+Claude Code là công cụ AI lập trình. RAG giúp truy xuất thông tin từ tài liệu. FastAPI là framework Python hiệu năng cao.
