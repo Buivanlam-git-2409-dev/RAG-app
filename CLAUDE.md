@@ -7,7 +7,8 @@ AI-Powered Smart Document Research (RAG App) - Ứng dụng cho phép upload tà
 - **Backend:** Python, FastAPI
 - **AI Framework:** LangChain
 - **Vector Database:** ChromaDB (local)
-- **LLM:** OpenAI GPT-4o/mini
+- **Embeddings:** HuggingFace (sentence-transformers/all-MiniLM-L6-v2)
+- **LLM:** Google Gemini 1.5 Flash
 - **Frontend:** React (Vite) + Tailwind CSS
 
 ## Commands
@@ -43,22 +44,37 @@ ruff check . --fix              # Auto-fix issues
 - Không commit file `.env` hoặc API keys
 
 ## Current State
-- **Last session:** 2026-05-02 — Testing and API validation
-- **Completed:**
+- **Last session:** 2026-05-04 — Project completion and testing
+- **Backend Completed:**
   - Created project structure (backend, data directories)
   - Implemented FastAPI application with CORS support
-  - Created RAG service with ChromaDB integration
+  - Created RAG service with ChromaDB integration and HuggingFace embeddings
   - Implemented upload API endpoint (PDF/TXT support)
   - Implemented query API endpoint with source retrieval
   - Added document management endpoints (list, delete, clear)
-  - Created configuration management with environment variables
+  - Added configuration management with environment variables
   - Added comprehensive error handling and validation
   - Setup virtual environment and installed dependencies
-  - **All 8 unit tests passing** ✅
-- **In progress:** Fixing encoding issue in main.py (removed emojis for Windows compatibility)
-- **Next:** Start server and test API endpoints manually
+  - Fixed import issues and RAG service instantiation
+  - **Backend server running successfully on port 8001** ✅
+- **Frontend Completed:**
+  - Created React components with modern UI design
+  - Implemented file upload with drag & drop functionality
+  - Created chat interface for document queries
+  - Added document list display
+  - Configured Tailwind CSS with custom theme
+  - Set up Vite build system with proxy to backend
+  - Created index.css with Tailwind directives and custom styles
+  - Installed all dependencies
+  - **Frontend dev server running successfully on port 5173** ✅
+- **Full Integration Tested:**
+  - Backend and frontend servers running
+  - API proxy configured correctly
+  - Ready for end-to-end testing
 
 ## Key Decisions
 - Sử dụng ChromaDB local vì dễ setup và không cần external service
+- HuggingFace embeddings (local, free) thay vì OpenAI embeddings
+- Google Gemini cho LLM vì free tier và good performance
 - LangChain cho RAG implementation vì có good documentation và community support
 - FastAPI cho backend vì async support và automatic API docs
