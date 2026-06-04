@@ -12,7 +12,7 @@ class Settings(BaseSettings):
 
     # Groq Configuration
     groq_api_key: str = os.getenv("GROQ_API_KEY", "")
-    groq_model: str = os.getenv("GROQ_MODEL", "llama-3.1-70b-versatile")
+    groq_model: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
     # ChromaDB Configuration
     chroma_persist_directory: str = os.getenv("CHROMA_PERSIST_DIRECTORY", "./chroma_db")
