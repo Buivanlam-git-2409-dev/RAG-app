@@ -1,6 +1,9 @@
 """RAG (Retrieval-Augmented Generation) implementation."""
 
-from langchain_google_genai import ChatGoogleGenerativeAI
+import os
+os.environ["CHROMA_TELEMETRY_DISABLED"] = "true"
+
+from langchain_groq import ChatGroq
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -19,14 +22,18 @@ class RAGService:
     def __init__(self):
         """Initialize RAG service with embeddings and vector store."""
         # Dùng HuggingFace embeddings (free, local, không cần API key)
+        print("[RAG] Initializing HuggingFace embeddings...")
         self.embeddings = HuggingFaceEmbeddings(
             model_name="sentence-transformers/all-MiniLM-L6-v2"
         )
+        print("[RAG] ✅ Embeddings initialized")
         
         # ✅ Dùng ChromaDB client với cấu hình mới
         from pathlib import Path
         persist_dir = Path(settings.chroma_persist_directory)
         persist_dir.mkdir(parents=True, exist_ok=True)
+        
+        print(f"[RAG] Initializing ChromaDB at: {persist_dir}")
         
         self.chroma_client = chromadb.PersistentClient(
             path=str(persist_dir)
@@ -36,6 +43,7 @@ class RAGService:
         self.collection = self.chroma_client.get_or_create_collection(
             name="rag_documents"
         )
+        print(f"[RAG] ✅ ChromaDB initialized (docs count: {self.collection.count()})")
         
         self.qa_chain = None
 
@@ -103,40 +111,42 @@ class RAGService:
                     "answer": "Không có tài liệu nào trong vector store để truy vấn",
                     "sources": []
                 }
-        except:
+        except Exception as e:
             return {
-                "answer": "Chưa có tài liệu nào được upload. Hãy upload file trước.",
+                "answer": f"Lỗi khi kiểm tra database: {str(e)}",
                 "sources": []
             }
 
-        # Tạo embedding cho câu hỏi
-        question_embedding = self.embeddings.embed_query(question)
-        
-        # Tìm kiếm
-        results = self.collection.query(
-            query_embeddings=[question_embedding],
-            n_results=k
-        )
-        
-        if not results['documents'] or len(results['documents'][0]) == 0:
-            return {
-                "answer": "Không tìm thấy thông tin liên quan trong tài liệu.",
-                "sources": []
-            }
-        
-        # Lấy kết quả
-        contexts = results['documents'][0]
-        sources = []
-        for i, meta in enumerate(results['metadatas'][0]):
-            sources.append({
-                "content": contexts[i][:200] + "..." if len(contexts[i]) > 200 else contexts[i],
-                "metadata": meta
-            })
-        
-        # Tạo prompt
-        context_text = "\n\n".join(contexts)
-        
-        prompt = f"""Answer the question based only on the following context:
+        try:
+            # Tạo embedding cho câu hỏi
+            question_embedding = self.embeddings.embed_query(question)
+            
+            # Tìm kiếm bằng embedding
+            results = self.collection.query(
+                query_embeddings=[question_embedding],
+                n_results=k
+            )
+            
+            if not results.get('documents') or len(results['documents']) == 0 or len(results['documents'][0]) == 0:
+                return {
+                    "answer": "Không tìm thấy thông tin liên quan trong tài liệu.",
+                    "sources": []
+                }
+            
+            # Lấy kết quả
+            contexts = results['documents'][0]
+            sources = []
+            
+            for i, meta in enumerate(results.get('metadatas', [[]])[0] if results.get('metadatas') else []):
+                sources.append({
+                    "content": contexts[i][:200] + "..." if len(contexts[i]) > 200 else contexts[i],
+                    "metadata": meta
+                })
+            
+            # Tạo prompt
+            context_text = "\n\n".join(contexts)
+            
+            prompt = f"""Answer the question based only on the following context:
 
 {context_text}
 
@@ -144,20 +154,25 @@ Question: {question}
 
 Answer the question in Vietnamese. If you don't know the answer based on the context, say "Tôi không tìm thấy thông tin này trong tài liệu." """
 
-        # Create LLM
-        llm = ChatGoogleGenerativeAI(
-            model=settings.gemini_model,
-            google_api_key=settings.google_api_key,
-            temperature=0
-        )
-        
-        # Gọi LLM trực tiếp
-        response = llm.invoke(prompt)
+            # Create LLM
+            llm = ChatGroq(
+                model=settings.groq_model,
+                groq_api_key=settings.groq_api_key,
+                temperature=0
+            )
+            
+            # Gọi LLM trực tiếp
+            response = llm.invoke(prompt)
 
-        return {
-            "answer": response.content,
-            "sources": sources
-        }
+            return {
+                "answer": response.content,
+                "sources": sources
+            }
+        except Exception as e:
+            return {
+                "answer": f"Lỗi xử lý: {str(e)}",
+                "sources": []
+            }
 
     def clear_store(self):
         """Clear all documents from the vector store."""

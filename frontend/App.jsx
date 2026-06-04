@@ -40,7 +40,7 @@ function App() {
       const response = await fetch('/api/query-document', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: content })
+        body: JSON.stringify({ question: content })
       })
 
       if (response.ok) {

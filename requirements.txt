@@ -5,9 +5,10 @@ python-multipart==0.0.6
 
 # AI & RAG
 langchain>=0.2.0
-langchain-google-genai>=0.1.0
+langchain-groq>=0.1.0
 langchain-community>=0.1.0
 langchain-chroma>=0.1.0
+langchain-huggingface>=0.0.1
 chromadb>=0.5.0
 
 # Document Processing

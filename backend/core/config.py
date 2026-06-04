@@ -10,10 +10,9 @@ load_dotenv()
 class Settings(BaseSettings):
     """Application settings."""
 
-    # Google Gemini Configuration
-    google_api_key: str = os.getenv("GOOGLE_API_KEY", "")
-    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
-    gemini_embedding_model: str = os.getenv("GEMINI_EMBEDDING_MODEL", "models/text-embedding-004")
+    # Groq Configuration
+    groq_api_key: str = os.getenv("GROQ_API_KEY", "")
+    groq_model: str = os.getenv("GROQ_MODEL", "llama-3.1-70b-versatile")
 
     # ChromaDB Configuration
     chroma_persist_directory: str = os.getenv("CHROMA_PERSIST_DIRECTORY", "./chroma_db")

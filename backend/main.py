@@ -20,7 +20,7 @@ async def lifespan(app: FastAPI):
     # Startup
     print("Starting RAG App...")
     print(f"ChromaDB persist directory: {settings.chroma_persist_directory}")
-    print(f"Using Google Gemini model: {settings.gemini_model}")
+    print(f"Using Groq model: {settings.groq_model}")
     yield
     # Shutdown
     print("Shutting down RAG App...")

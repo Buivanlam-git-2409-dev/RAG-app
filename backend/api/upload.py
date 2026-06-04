@@ -26,11 +26,15 @@ async def upload_document(file: UploadFile = File(...)):
     Returns:
         Status message and number of chunks created
     """
+    print(f"[UPLOAD] Received file: {file.filename}")
+    
     # Validate file type
     if not file.filename:
         raise HTTPException(status_code=400, detail="Không có tệp nào được tải lên")
 
     file_ext = Path(file.filename).suffix.lower()
+    print(f"[UPLOAD] File extension: {file_ext}")
+    
     if file_ext not in [".pdf", ".txt"]:
         raise HTTPException(
             status_code=400,
@@ -44,9 +48,12 @@ async def upload_document(file: UploadFile = File(...)):
     # Save file
     file_path = upload_dir / file.filename
     try:
+        print(f"[UPLOAD] Saving to {file_path}")
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+        print(f"[UPLOAD] File saved successfully")
     except Exception as e:
+        print(f"[UPLOAD ERROR] Failed to save file: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"Lỗi trong khi lưu file: {str(e)}"
@@ -54,6 +61,7 @@ async def upload_document(file: UploadFile = File(...)):
 
     # Process document based on type
     try:
+        print(f"[UPLOAD] Processing {file_ext} file...")
         from langchain.schema import Document
 
         if file_ext == ".pdf":
@@ -74,8 +82,12 @@ async def upload_document(file: UploadFile = File(...)):
 
             document = Document(page_content=text, metadata={"source": file.filename})
 
+        print(f"[UPLOAD] Document text length: {len(document.page_content)} chars")
+        
         # Add to vector store
+        print(f"[UPLOAD] Adding to vector store...")
         chunks_added = rag_service.add_documents([document])
+        print(f"[UPLOAD] ✅ Success! {chunks_added} chunks added")
 
         return {
             "status": "success",
@@ -88,9 +100,14 @@ async def upload_document(file: UploadFile = File(...)):
         if file_path.exists():
             file_path.unlink()
 
+        error_msg = str(e)
+        print(f"[UPLOAD ERROR] Processing {file.filename}: {error_msg}")
+        import traceback
+        traceback.print_exc()
+        
         raise HTTPException(
             status_code=500,
-            detail=f"Lỗi trong khi xử lý tài liệu: {str(e)}"
+            detail=f"Lỗi trong khi xử lý tài liệu: {error_msg}"
         )
 
 
